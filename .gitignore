@@ -4,7 +4,7 @@
 .vscode/ipch
 .vscode/*.log
 
-.pio/build/
+.pio/
 
 # Prerequisites
 *.d
