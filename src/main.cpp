@@ -5,19 +5,19 @@
 // OLED display constants.
 #define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 64
-#define OLED_MOSI     23
-#define OLED_CLK      18
-#define OLED_DC       16
-#define OLED_CS       5
-#define OLED_RESET    17
+#define MOSI 23
+#define SCK  18
+#define RES  17
+#define DC   16
+#define CS   5
 
 // VL53L0X sensor constants.
-#define VL53L0X_FAIL_RANGE_STATUS 4
-#define VL53L0X_MAX_RANGE 255
+#define FAIL_RANGE_STATUS  4
+#define OUT_OF_RANGE_POINT 236
 
 // Global variables for the OLED display and VL53L0X sensor.
-Adafruit_VL53L0X distanceSensor = Adafruit_VL53L0X();
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
+auto distanceSensor = Adafruit_VL53L0X();
+auto oledDisplay = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, MOSI, SCK, DC, RES, CS);
 
 // Setup VL53L0X sensor for long range mode measurement.
 inline void DistanceSensorSetup()
@@ -37,7 +37,7 @@ inline void DistanceSensorSetup()
 // Setup SPI OLED display.
 inline void DisplaySetup()
 {
-    if (!display.begin(SSD1306_SWITCHCAPVCC))
+    if (!oledDisplay.begin(SSD1306_SWITCHCAPVCC))
     {
         Serial.println("SSD1306 allocation failed");
         while (true);
@@ -52,7 +52,8 @@ double MeasureDistanceCm()
     distanceSensor.rangingTest(&measure);
     double distance;
 
-    if (measure.RangeStatus == VL53L0X_FAIL_RANGE_STATUS || (distance = measure.RangeMilliMeter / 10.0) > VL53L0X_MAX_RANGE)
+    // Check if the measurement is valid (not FAIL_RANGE_STATUS and distance in cm is not too large).
+    if (measure.RangeStatus == FAIL_RANGE_STATUS || (distance = measure.RangeMilliMeter / 10.0) > OUT_OF_RANGE_POINT)
     {
         throw std::out_of_range("  out of\n range...");
     }
@@ -62,22 +63,32 @@ double MeasureDistanceCm()
 // Send the measured distance to OLED display.
 inline void DisplayDistance(const double distance, const char* unit)
 {
-    display.setCursor(5, 28);
-    display.setTextColor(SSD1306_WHITE);
-    display.print(distance);
-    display.print(' ');
-    display.println(unit);
-    display.display();
+    // Clear and set the display text size, cursor and color.
+    oledDisplay.clearDisplay();
+    oledDisplay.setTextSize(2);
+    oledDisplay.setCursor(5, 28);
+    oledDisplay.setTextColor(SSD1306_WHITE);
+
+    // Display the distance.
+    oledDisplay.print(distance);
+    oledDisplay.print(' ');
+    oledDisplay.println(unit);
+    oledDisplay.display();
 }
 
-// Send error message to OLED display in a rounded box.
+// Send error message to OLED display.
 inline void DisplayError(const char* errorMessage)
 {
-    display.fillRoundRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 8, SSD1306_WHITE);
-    display.setCursor(0, 14);
-    display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
-    display.println(errorMessage);
-    display.display();
+    // Clear and set the display text size, cursor and color.
+    oledDisplay.clearDisplay();
+    oledDisplay.setTextSize(2);
+    oledDisplay.setCursor(0, 14);
+    oledDisplay.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
+
+    // Display the error message in a rounded box.
+    oledDisplay.fillRoundRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 8, SSD1306_WHITE);
+    oledDisplay.println(errorMessage);
+    oledDisplay.display();
 }
 
 // Arduino setup function.
@@ -93,11 +104,10 @@ void setup()
 // Arduino loop function.
 void loop()
 {
-    display.clearDisplay();
-    display.setTextSize(2);
     try
     {
-        DisplayDistance(MeasureDistanceCm(), "cm");
+        auto distance = MeasureDistanceCm();
+        DisplayDistance(distance, "cm");
     }
     catch (std::out_of_range& exception)
     {
