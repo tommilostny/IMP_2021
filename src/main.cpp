@@ -7,8 +7,8 @@
 #define SCREEN_HEIGHT 64
 #define MOSI 23
 #define SCK  18
-#define RES  17
-#define DC   16
+#define RES  13
+#define DC   12
 #define CS   5
 
 // VL53L0X sensor constants.
