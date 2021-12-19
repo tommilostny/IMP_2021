@@ -104,14 +104,20 @@ void setup()
 // Arduino loop function.
 void loop()
 {
+    static auto inOutOfRangeMode = false;
     try
     {
         auto distance = MeasureDistanceCm();
         DisplayDistance(distance, "cm");
+        inOutOfRangeMode = false;
     }
     catch (std::out_of_range& exception)
     {
-        DisplayError(exception.what());
+        if (!inOutOfRangeMode)
+        {
+            DisplayError(exception.what());
+            inOutOfRangeMode = true;
+        }
     }
     delay(500);
 }
